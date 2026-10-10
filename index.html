@@ -6,7 +6,7 @@
 <title>장면 하나</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
 <style>
 :root {
   --paper: #fbfbf9;
@@ -14,7 +14,8 @@
   --muted: #80888a;
   --rule: #dfe3e2;
   --accent: #55736d;
-  --serif: "Gowun Batang", "Noto Serif KR", "Nanum Myeongjo", "Apple SD Gothic Neo", serif;
+  --serif: "Gowun Dodum", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --hand: "Nanum Pen Script", "Gowun Dodum", cursive;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -98,14 +99,19 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .card-inner { opacity: 1; transition: opacity .5s ease; }
 .card-inner.fade { opacity: 0; }
 
-.block { margin: 0; white-space: pre-line; }
+.block {
+  margin: 0; white-space: pre-line;
+  font-family: var(--hand);
+  font-size: 27px; line-height: 1.7;
+  -webkit-text-stroke: 0.014em var(--paper); /* 글자 가장자리를 종이색으로 깎아 가늘게 */
+}
 .scene-wrap {
   min-height: 78vh; min-height: 78dvh;
   display: flex; flex-direction: column; justify-content: center;
 }
 .scene {
-  font-size: clamp(26px, 7.2vw, 34px);
-  line-height: 1.75;
+  font-size: clamp(34px, 9vw, 42px);
+  line-height: 1.6;
 }
 .scroll-hint {
   margin-top: 56px;
@@ -875,9 +881,14 @@ introTap.addEventListener("keydown", function (e) {
   if (e.target !== introTap) return;
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); advanceIntro(); }
 });
+function markVisited() {
+  try { localStorage.setItem("scene-visited", "1"); } catch (e) {}
+}
 introGo.addEventListener("click", function (e) {
   e.stopPropagation();
-  openCard(CARDS[0]); // 첫 카드는 고정
+  markVisited();
+  bag = shuffle(CARDS.slice(1)); // 첫 카드(바람)를 뺀 나머지를 섞어 둔다
+  openCard(CARDS[0]); // 처음 온 사람의 첫 카드는 고정
 });
 
 /* ============ 카드 ============ */
@@ -988,14 +999,18 @@ function wrapLine(ctx, text, maxW) {
 function saveCard() {
   if (!current) return;
   var fontReady = (document.fonts && document.fonts.load)
-    ? document.fonts.load('32px "Gowun Batang"').catch(function () {})
+    ? Promise.all([
+        document.fonts.load('40px "Nanum Pen Script"', current.parts ? current.parts.join("") : [current.scene, current.view, current.tryIt, current.back].join("")),
+        document.fonts.load('26px "Gowun Dodum"', "장면 하나")
+      ]).catch(function () {})
     : Promise.resolve();
   fontReady.then(function () {
     var W = 1080, H = 1350, pad = 110, maxW = W - pad * 2;
     var cv = document.createElement("canvas");
     cv.width = W; cv.height = H;
     var ctx = cv.getContext("2d");
-    var fam = '"Gowun Batang", "Noto Serif KR", "Apple SD Gothic Neo", serif';
+    var famUI = '"Gowun Dodum", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif';
+    var famHand = '"Nanum Pen Script", "Gowun Dodum", cursive';
     var paper = cssVar("--paper") || "#fbfbf9";
     var ink = cssVar("--ink") || "#1d2224";
     var muted = cssVar("--muted") || "#80888a";
@@ -1010,35 +1025,40 @@ function saveCard() {
 
     var y = 170;
     function draw(text, size, color, lh, indent) {
-      ctx.font = size + "px " + fam;
+      ctx.font = size + "px " + famHand;
       ctx.fillStyle = color;
       var rows = [];
       text.split("\n").forEach(function (l) { rows = rows.concat(wrapLine(ctx, l, maxW - (indent || 0))); });
-      rows.forEach(function (r) { ctx.fillText(r, pad + (indent || 0), y); y += lh; });
+      rows.forEach(function (r) {
+        ctx.fillStyle = color; ctx.fillText(r, pad + (indent || 0), y);
+        ctx.strokeStyle = paper; ctx.lineWidth = size * 0.014; ctx.lineJoin = "round";
+        ctx.strokeText(r, pad + (indent || 0), y); // 종이색 테두리로 깎아 가늘게
+        y += lh;
+      });
     }
 
     if (current.parts) {
       var lastI = current.parts.length - 1;
-      draw(current.parts[0], 54, ink, 92);
+      draw(current.parts[0], 68, ink, 108);
       for (var pi = 1; pi <= lastI; pi++) {
-        y += (pi === 1 ? 60 : 50);
-        if (pi === lastI) { draw(current.parts[pi], 38, muted, 66); }
+        y += (pi === 1 ? 70 : 60);
+        if (pi === lastI) { draw(current.parts[pi], 50, muted, 82); }
         else if (current.tryIdx === pi) {
           var yt = y;
-          draw(current.parts[pi], 38, ink, 66, 32);
+          draw(current.parts[pi], 50, ink, 82, 32);
           ctx.fillStyle = accent; ctx.fillRect(pad, yt + 6, 4, y - yt - 16);
-        } else { draw(current.parts[pi], 38, ink, 66); }
+        } else { draw(current.parts[pi], 50, ink, 82); }
       }
     } else {
-    draw(current.scene, 54, ink, 92);
+    draw(current.scene, 68, ink, 108);
+    y += 70;
+    draw(current.view, 50, ink, 82);
     y += 60;
-    draw(current.view, 38, ink, 66);
-    y += 50;
     var y0 = y;
-    draw(current.tryIt, 38, ink, 66, 32);
+    draw(current.tryIt, 50, ink, 82, 32);
     ctx.fillStyle = accent; ctx.fillRect(pad, y0 + 6, 4, y - y0 - 16);
-    y += 50;
-    draw(current.back, 38, muted, 66);
+    y += 60;
+    draw(current.back, 50, muted, 82);
     }
     // 카드별 표식
     var ms = markSpec(current.id);
@@ -1052,7 +1072,7 @@ function saveCard() {
     ms.dots.forEach(function (c) { ctx.beginPath(); ctx.arc(c[0], c[1], c[2], 0, Math.PI * 2); ctx.fill(); });
     ctx.restore();
 
-    ctx.font = "26px " + fam; ctx.fillStyle = muted;
+    ctx.font = "26px " + famUI; ctx.fillStyle = muted;
     ctx.fillText("장면 하나", pad, H - 110);
 
     var img = document.getElementById("saveImg");
@@ -1065,7 +1085,15 @@ document.getElementById("saveClose").addEventListener("click", function () {
 });
 
 /* ============ 시작 ============ */
-showIntro(0);
+var visited = false;
+try { visited = localStorage.getItem("scene-visited") === "1"; } catch (e) {}
+if (visited) {
+  // 다시 온 사람: 도입 없이 바로, 매번 새로 섞은 순서의 카드
+  bag = shuffle(CARDS.slice());
+  openCard(bag.pop());
+} else {
+  showIntro(0);
+}
 </script>
 </body>
 </html>
